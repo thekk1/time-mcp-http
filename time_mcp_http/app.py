@@ -1,0 +1,173 @@
+"""Streamable-HTTP transport for the official mcp-server-time tool logic.
+
+The upstream package (modelcontextprotocol/servers, src/time) only ships a
+stdio entrypoint (``serve()`` in ``mcp_server_time.server`` builds a
+``Server`` and immediately runs it over stdio — the tool handlers are local
+closures, not importable). Rather than fork the tool logic, this module
+re-registers the SAME schemas against the SAME ``TimeServer``/``TimeTools``
+from the installed package and only swaps the transport, so
+`pip install --upgrade mcp-server-time` still picks up upstream fixes.
+
+No credentials, no per-user state, no auth gate: this is a stateless,
+read-only utility (current time / timezone conversion) — see bos-chat-stack.md
+"time-mcp" for why it deliberately has no MCP_API_KEY, same reasoning as
+ews-mcp's multi-user mode (a 401 from ANY gate makes LibreChat's non-OAuth
+MCP client try OAuth and get stuck).
+"""
+
+import contextlib
+import logging
+import os
+from typing import Any, Dict, List, Sequence
+
+from mcp.server import Server
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool, ToolAnnotations
+from mcp_server_time.server import TimeServer, TimeTools, get_local_tz
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Mount, Route, Router
+
+logger = logging.getLogger(__name__)
+
+_time_server = TimeServer()
+try:
+    # Cosmetic only (goes into the tool-description text below so the model
+    # has a sane default to reach for) — must never block boot. A minimal
+    # container image commonly has no /etc/localtime, and tzlocal's
+    # autodetection can return a bare abbreviation ("CEST") that ZoneInfo
+    # rejects; LOCAL_TIMEZONE should be set explicitly in production
+    # (see docker-compose snippet in bos-chat-stack.md), but a bad or
+    # missing value degrades to UTC instead of crashing the process.
+    _local_tz = str(get_local_tz(os.environ.get("LOCAL_TIMEZONE") or None))
+except Exception:
+    logger.warning("could not determine local timezone, defaulting to UTC — "
+                    "set LOCAL_TIMEZONE explicitly")
+    _local_tz = "UTC"
+
+
+def build_server() -> Server:
+    server = Server("time-mcp-http")
+
+    @server.list_tools()
+    async def list_tools() -> List[Tool]:
+        return [
+            Tool(
+                name=TimeTools.GET_CURRENT_TIME.value,
+                description="Get current time in a specific timezone",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "timezone": {
+                            "type": "string",
+                            "description": (
+                                "IANA timezone name (e.g., 'America/New_York', "
+                                f"'Europe/London'). Use '{_local_tz}' as local "
+                                "timezone if no timezone provided by the user."
+                            ),
+                        }
+                    },
+                    "required": ["timezone"],
+                },
+                annotations=ToolAnnotations(
+                    readOnlyHint=True, destructiveHint=False,
+                    idempotentHint=True, openWorldHint=False,
+                ),
+            ),
+            Tool(
+                name=TimeTools.CONVERT_TIME.value,
+                description="Convert time between timezones",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "source_timezone": {
+                            "type": "string",
+                            "description": (
+                                "Source IANA timezone name. Use "
+                                f"'{_local_tz}' as local timezone if none given."
+                            ),
+                        },
+                        "time": {
+                            "type": "string",
+                            "description": "Time to convert, 24-hour format (HH:MM)",
+                        },
+                        "target_timezone": {
+                            "type": "string",
+                            "description": (
+                                "Target IANA timezone name. Use "
+                                f"'{_local_tz}' as local timezone if none given."
+                            ),
+                        },
+                    },
+                    "required": ["source_timezone", "time", "target_timezone"],
+                },
+                annotations=ToolAnnotations(
+                    readOnlyHint=True, destructiveHint=False,
+                    idempotentHint=True, openWorldHint=False,
+                ),
+            ),
+        ]
+
+    @server.call_tool()
+    async def call_tool(
+        name: str, arguments: Dict[str, Any]
+    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        import json
+
+        try:
+            if name == TimeTools.GET_CURRENT_TIME.value:
+                timezone = arguments.get("timezone")
+                if not timezone:
+                    raise ValueError("Missing required argument: timezone")
+                result = _time_server.get_current_time(timezone)
+            elif name == TimeTools.CONVERT_TIME.value:
+                if not all(k in arguments for k in
+                           ("source_timezone", "time", "target_timezone")):
+                    raise ValueError("Missing required arguments")
+                result = _time_server.convert_time(
+                    arguments["source_timezone"], arguments["time"],
+                    arguments["target_timezone"],
+                )
+            else:
+                raise ValueError(f"Unknown tool: {name}")
+        except Exception as exc:
+            raise ValueError(f"Error processing time query: {exc}") from exc
+
+        return [TextContent(type="text", text=json.dumps(result.model_dump(), indent=2))]
+
+    return server
+
+
+def build_app() -> Router:
+    server = build_server()
+    session_manager = StreamableHTTPSessionManager(
+        app=server, json_response=False, stateless=True,
+    )
+
+    async def handle_mcp(scope, receive, send) -> None:
+        await session_manager.handle_request(scope, receive, send)
+
+    async def livez(_request: Request) -> PlainTextResponse:
+        return PlainTextResponse("ok")
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_app: Router):
+        async with session_manager.run():
+            logger.info("time-mcp-http up, local timezone=%s", _local_tz)
+            yield
+
+    # A bare POST /mcp (no trailing slash — the convention every BOS MCP
+    # server's librechat.yaml url: uses) 307s to /mcp/ here: Mount only
+    # matches inside its prefix, and turning redirect_slashes off makes it
+    # miss the bare prefix entirely (tried it — 404s instead). A 307 keeps
+    # the method and body (unlike 301/302) and every mainstream HTTP client
+    # (fetch, the JS MCP SDK's transport, httpx, curl -L) follows it by
+    # default, so this is left as Starlette's default rather than "fixed".
+    return Router(
+        routes=[
+            Route("/livez", livez),
+            Route("/readyz", livez),  # stateless, no upstream dependency to warm up
+            Mount("/mcp", app=handle_mcp),
+        ],
+        lifespan=lifespan,
+    )

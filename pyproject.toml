@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "time-mcp-http"
+version = "0.1.0"
+description = "The official modelcontextprotocol/servers 'time' MCP server, re-hosted over streamable HTTP instead of stdio — so it fits the same all-HTTP MCP fleet as every other BOS server (see bos-chat-stack.md)."
+requires-python = ">=3.11"
+dependencies = [
+    "mcp-server-time>=0.6,<1",  # upstream tool logic — get_current_time/convert_time
+    "mcp>=1.29,<2",
+    "starlette>=0.37",
+    "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+time-mcp-http = "time_mcp_http.main:main"
+
+[tool.setuptools.packages.find]
+include = ["time_mcp_http*"]
