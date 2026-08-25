@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "time-mcp-http"
 version = "0.1.0"
-description = "The official modelcontextprotocol/servers 'time' MCP server, re-hosted over streamable HTTP instead of stdio — so it fits the same all-HTTP MCP fleet as every other BOS server (see bos-chat-stack.md)."
+description = "The official modelcontextprotocol/servers 'time' MCP server, re-hosted over streamable HTTP instead of stdio."
 requires-python = ">=3.11"
 dependencies = [
     "mcp-server-time>=0.6,<1",  # upstream tool logic — get_current_time/convert_time

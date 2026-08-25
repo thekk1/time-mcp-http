@@ -9,10 +9,9 @@ from the installed package and only swaps the transport, so
 `pip install --upgrade mcp-server-time` still picks up upstream fixes.
 
 No credentials, no per-user state, no auth gate: this is a stateless,
-read-only utility (current time / timezone conversion) — see bos-chat-stack.md
-"time-mcp" for why it deliberately has no MCP_API_KEY, same reasoning as
-ews-mcp's multi-user mode (a 401 from ANY gate makes LibreChat's non-OAuth
-MCP client try OAuth and get stuck).
+read-only utility (current time / timezone conversion), deliberately with
+no MCP_API_KEY, same reasoning as ews-mcp's multi-user mode (a 401 from
+ANY gate makes LibreChat's non-OAuth MCP client try OAuth and get stuck).
 """
 
 import contextlib
@@ -37,7 +36,7 @@ try:
     # container image commonly has no /etc/localtime, and tzlocal's
     # autodetection can return a bare abbreviation ("CEST") that ZoneInfo
     # rejects; LOCAL_TIMEZONE should be set explicitly in production
-    # (see docker-compose snippet in bos-chat-stack.md), but a bad or
+    # (see the docker-compose snippet in README.md), but a bad or
     # missing value degrades to UTC instead of crashing the process.
     _local_tz = str(get_local_tz(os.environ.get("LOCAL_TIMEZONE") or None))
 except Exception:

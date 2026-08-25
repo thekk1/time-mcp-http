@@ -2,9 +2,8 @@
 
 The official [modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
 `time` server (`get_current_time`, `convert_time`) re-hosted over streamable
-HTTP instead of stdio — so it fits the same all-Docker, all-HTTP MCP fleet
-as the rest of the BOS stack (see `bos-chat-stack.md`), instead of needing
-LibreChat to spawn a local subprocess.
+HTTP instead of stdio — so it can run as a plain Docker service reachable
+over HTTP, instead of needing LibreChat to spawn a local subprocess.
 
 The tool logic (timezone math, schemas) is imported straight from the
 installed `mcp-server-time` package (`TimeServer`/`TimeTools`) — only the
@@ -17,8 +16,7 @@ A calling assistant has no built-in sense of "now" — it can misread an
 ISO timestamp's UTC offset, or simply not know what day it is. Giving it
 an explicit, callable, on-demand tool is more reliable than trying to
 inject ambient date/time into every system prompt (LibreChat's Agents
-endpoint doesn't support that natively as of 2026-08 — see
-`bos-chat-stack.md`).
+endpoint doesn't support that natively as of 2026-08).
 
 ## Run
 

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # time-mcp-http — the official modelcontextprotocol/servers "time" tool
 # logic (mcp-server-time), re-hosted over streamable HTTP. No Exchange/EWS
-# involved; this is a standalone utility server for the whole BOS MCP fleet.
+# involved; this is a standalone, general-purpose MCP utility server.
 
 FROM python:3.11-slim AS builder
 WORKDIR /src
