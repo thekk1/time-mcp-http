@@ -10,8 +10,8 @@ from the installed package and only swaps the transport, so
 
 No credentials, no per-user state, no auth gate: this is a stateless,
 read-only utility (current time / timezone conversion), deliberately with
-no MCP_API_KEY, same reasoning as ews-mcp's multi-user mode (a 401 from
-ANY gate makes LibreChat's non-OAuth MCP client try OAuth and get stuck).
+no MCP_API_KEY -- a 401 from ANY gate makes LibreChat's non-OAuth MCP
+client try OAuth and get stuck.
 """
 
 import contextlib

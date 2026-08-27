@@ -30,10 +30,9 @@ tool-description text ("use this as local timezone if the user doesn't
 specify one") — every call still takes an explicit `timezone` argument.
 If unset or invalid, it falls back to `UTC` rather than failing to boot.
 
-No credentials, no per-user state, no `MCP_API_KEY` — deliberately, same
-reasoning as ews-mcp's multi-user mode: a 401 from any gate makes
-LibreChat's non-OAuth MCP client try (and get stuck on) OAuth. Docker
-network isolation is the boundary here, not an API key.
+No credentials, no per-user state, no `MCP_API_KEY` — deliberately: a 401
+from any gate makes LibreChat's non-OAuth MCP client try (and get stuck
+on) OAuth. Docker network isolation is the boundary here, not an API key.
 
 ## Test
 
