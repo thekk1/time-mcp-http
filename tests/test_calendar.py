@@ -51,7 +51,9 @@ def test_date_range_counts_working_days_and_holidays(server):
     out = _call_tool(server, "date_range", {"start": "2026-12-21", "end": "2027-01-03"})
     assert out["days_total"] == 14 and len(out["days"]) == 14
     # Mon 21. to Fri 2. January: ten weekdays minus 25.12. (Fri) and 1.1. (Fri); 26.12. is a Saturday
-    assert out["working_days"] == 8
+    assert out["working_days"] == 8 and out["weekend_days"] == 4 and out["holidays_on_weekdays"] == 2
+    dec = _call_tool(server, "date_range", {"start": "2026-12-01", "end": "2026-12-31", "state": "NW"})
+    assert (dec["working_days"], dec["weekend_days"], dec["holidays_on_weekdays"]) == (22, 8, 1)
     assert [h["date"] for h in out["holidays"]] == ["2026-12-25", "2026-12-26", "2027-01-01"]
 
 

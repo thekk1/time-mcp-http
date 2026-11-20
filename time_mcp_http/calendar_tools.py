@@ -100,6 +100,9 @@ def date_range(args: Dict[str, Any]) -> Dict[str, Any]:
         "end": end.isoformat(),
         "days_total": count,
         "working_days": sum(d["working_day"] for d in days),
+        "weekend_days": sum(1 for d in days if d["weekday"] in ("Saturday", "Sunday")),
+        "holidays_on_weekdays": sum(1 for d in days
+                                    if "holiday" in d and d["weekday"] not in ("Saturday", "Sunday")),
         "holidays": [{"date": d["date"], "name": d["holiday"]} for d in days if "holiday" in d],
         "holidays_of": _scope(state),
         "days": days,
@@ -246,7 +249,8 @@ TOOLS: List[Tool] = [
         name="date_range",
         description=(
             f"Every day from start to end inclusive (at most {MAX_RANGE_DAYS} days) with the facts of "
-            "date_info, plus the number of days and working days and the German public holidays in the period."
+            "date_info, plus the numbers of days, working days, weekend days and holidays on weekdays "
+            "(working days = days - weekend days - holidays on weekdays) and the German public holidays in the period."
         ),
         inputSchema={"type": "object",
                      "properties": {"start": _DATE_PROP, "end": _DATE_PROP, "state": _STATE_PROP},
