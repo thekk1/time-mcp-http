@@ -10,6 +10,27 @@ installed `mcp-server-time` package (`TimeServer`/`TimeTools`) — only the
 transport is different, so `pip install --upgrade mcp-server-time` still
 picks up upstream fixes.
 
+## Calendar tools
+
+Next to the upstream tools the server has its own calendar tools
+(`time_mcp_http/calendar_tools.py`), so a model never works out these facts in
+its head:
+
+| Tool | Returns |
+|---|---|
+| `date_info` | weekday (English and German), ISO week, day of the year, German public holiday, working day |
+| `date_range` | every day of a period (at most 366) with these facts, number of days and working days, the holidays in it |
+| `add_days` | the date n calendar days or n working days after (or before) a date |
+| `list_holidays` | all German public holidays of a year |
+| `dst_transitions` | the daylight saving time changes of a time zone in a year |
+| `leap_seconds` | all leap seconds, TAI minus UTC, and until when the list is valid |
+
+Holidays come from the [`holidays`](https://pypi.org/project/holidays/)
+package. Without `state` only the holidays that apply in all of Germany count;
+a two-letter state code (`NW`, `BY`, …) adds that state's holidays. Leap
+seconds come from `/usr/share/zoneinfo/leap-seconds.list` of the base image's
+tzdata (override with `LEAP_SECONDS_FILE`), so there is no network access.
+
 ## Why this exists
 
 A calling assistant has no built-in sense of "now" — it can misread an

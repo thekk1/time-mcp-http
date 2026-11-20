@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "time-mcp-http"
-version = "0.1.0"
+version = "0.2.0"
 description = "The official modelcontextprotocol/servers 'time' MCP server, re-hosted over streamable HTTP instead of stdio."
 requires-python = ">=3.11"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
     "mcp>=1.29,<2",
     "starlette>=0.37",
     "uvicorn>=0.30",
+    "holidays>=0.100,<1",  # German public holidays for the calendar tools
 ]
 
 [project.optional-dependencies]

@@ -9,7 +9,8 @@ from the installed package and only swaps the transport, so
 `pip install --upgrade mcp-server-time` still picks up upstream fixes.
 
 No credentials, no per-user state, no auth gate: this is a stateless,
-read-only utility (current time / timezone conversion), deliberately with
+read-only utility (current time / timezone conversion, plus the calendar
+facts in calendar_tools), deliberately with
 no MCP_API_KEY -- a 401 from ANY gate makes LibreChat's non-OAuth MCP
 client try OAuth and get stuck.
 """
@@ -23,6 +24,8 @@ from mcp.server import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool, ToolAnnotations
 from mcp_server_time.server import TimeServer, TimeTools, get_local_tz
+
+from time_mcp_http import calendar_tools
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, Router
@@ -105,6 +108,7 @@ def build_server() -> Server:
                     idempotentHint=True, openWorldHint=False,
                 ),
             ),
+            *calendar_tools.TOOLS,
         ]
 
     @server.call_tool()
@@ -112,6 +116,13 @@ def build_server() -> Server:
         name: str, arguments: Dict[str, Any]
     ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
         import json
+
+        if name in calendar_tools.HANDLERS:
+            try:
+                out = calendar_tools.HANDLERS[name](arguments or {})
+            except Exception as exc:
+                raise ValueError(f"Error processing calendar query: {exc}") from exc
+            return [TextContent(type="text", text=json.dumps(out, indent=2, ensure_ascii=False))]
 
         try:
             if name == TimeTools.GET_CURRENT_TIME.value:
