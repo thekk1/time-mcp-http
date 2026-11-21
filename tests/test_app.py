@@ -16,7 +16,7 @@ def test_list_tools_exposes_get_current_time_and_convert_time():
     tools = _run(_list_tools(server))
     names = {t.name for t in tools}
     assert names == {"get_current_time", "convert_time", "date_info", "date_range", "add_days",
-                     "list_holidays", "dst_transitions", "leap_seconds"}
+                     "list_holidays", "dst_transitions", "leap_seconds", "calendar_week"}
 
 
 async def _list_tools(server):

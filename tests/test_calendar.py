@@ -102,3 +102,23 @@ def test_leap_seconds(server):
     assert out["last"] == {"utc": "2016-12-31T23:59:60Z", "kind": "inserted", "tai_minus_utc_after": 37}
     assert out["leap_seconds"][0]["utc"] == "1972-06-30T23:59:60Z"
     assert out["list_expires"] > "2026-01-01"
+
+
+def test_calendar_week_from_year_and_week(server):
+    out = _call_tool(server, "calendar_week", {"year": 2026, "week": 45})
+    assert (out["start"], out["end"], out["iso_week"]) == ("2026-11-02", "2026-11-08", "2026-W45")
+    assert out["working_days"] == 5 and out["weeks_in_year"] == 53
+
+
+def test_calendar_week_from_date_across_new_year(server):
+    out = _call_tool(server, "calendar_week", {"date": "2027-01-01"})
+    # 1 January 2027 is a Friday in week 53 of ISO year 2026; Neujahr is a holiday
+    assert (out["year"], out["week"], out["start"], out["end"]) == (2026, 53, "2026-12-28", "2027-01-03")
+    assert out["working_days"] == 4 and out["holidays"] == [{"date": "2027-01-01", "name": "Neujahr"}]
+    assert _call_tool(server, "calendar_week", {"date": "2024-12-30"})["iso_week"] == "2025-W01"
+
+
+def test_calendar_week_rejects_bad_input(server):
+    for args in ({"year": 2025, "week": 53}, {"year": 2026, "week": 0}, {}, {"date": "2026-11-05", "week": 45}):
+        with pytest.raises(Exception):
+            _call_tool(server, "calendar_week", args)

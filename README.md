@@ -21,6 +21,7 @@ its head:
 | `date_info` | weekday (English and German), ISO week, day of the year, German public holiday, working day |
 | `date_range` | every day of a period (at most 366) with these facts, number of days and working days, the holidays in it |
 | `add_days` | the date n calendar days or n working days after (or before) a date |
+| `calendar_week` | ISO week (Kalenderwoche) and year to Monday and Sunday, or a date to its week |
 | `list_holidays` | all German public holidays of a year |
 | `dst_transitions` | the daylight saving time changes of a time zone in a year |
 | `leap_seconds` | all leap seconds, TAI minus UTC, and until when the list is valid |

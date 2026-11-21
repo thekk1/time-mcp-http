@@ -139,6 +139,45 @@ def add_days(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def calendar_week(args: Dict[str, Any]) -> Dict[str, Any]:
+    has_date = bool(args.get("date"))
+    has_week = args.get("week") is not None or args.get("year") is not None
+    if has_date == has_week:
+        raise ValueError("pass either date, or year and week")
+    if has_date:
+        iso = _date(args.get("date"), "date").isocalendar()
+        year, week = iso.year, iso.week
+    else:
+        year, week = args.get("year"), args.get("week")
+        for name, value in (("year", year), ("week", week)):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"{name} must be an integer")
+        if not 1900 <= year <= 2200:
+            raise ValueError("year must be between 1900 and 2200")
+        weeks = datetime.date(year, 12, 28).isocalendar().week  # 28 December always lies in the last week
+        if not 1 <= week <= weeks:
+            raise ValueError(f"ISO year {year} has weeks 1 to {weeks}, got {week}")
+    start = datetime.date.fromisocalendar(year, week, 1)
+    end = start + datetime.timedelta(days=6)
+    state = _state(args.get("state"))
+    table = _holidays(sorted({start.year, end.year}), state)
+    days = [_day(start + datetime.timedelta(days=i), table) for i in range(7)]
+    out: Dict[str, Any] = {
+        "iso_week": f"{year}-W{week:02d}",
+        "year": year,
+        "week": week,
+        "weeks_in_year": datetime.date(year, 12, 28).isocalendar().week,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "working_days": sum(d["working_day"] for d in days),
+        "holidays": [{"date": d["date"], "name": d["holiday"]} for d in days if "holiday" in d],
+        "holidays_of": _scope(state),
+    }
+    if has_date:
+        out["date"] = _date(args.get("date"), "date").isoformat()
+    return out
+
+
 def list_holidays(args: Dict[str, Any]) -> Dict[str, Any]:
     year = args.get("year")
     if isinstance(year, bool) or not isinstance(year, int) or not 1900 <= year <= 2200:
@@ -272,6 +311,22 @@ TOOLS: List[Tool] = [
         annotations=_READ_ONLY,
     ),
     Tool(
+        name="calendar_week",
+        description=(
+            "ISO calendar week (Kalenderwoche, Monday to Sunday): pass year and week to get its first "
+            "and last day, or a date to get the week it lies in. Returns the week, its Monday and Sunday, "
+            "the number of weeks of that ISO year, working days and German public holidays of the week. "
+            "The ISO year of a week can differ from the calendar year of a date near New Year."
+        ),
+        inputSchema={"type": "object", "properties": {
+            "date": {"type": "string", "description": "Date as YYYY-MM-DD; leave out with year and week."},
+            "year": {"type": "integer", "description": "ISO year of the week, e.g. 2026."},
+            "week": {"type": "integer", "description": "ISO week number, 1 to 52 or 53."},
+            "state": _STATE_PROP,
+        }},
+        annotations=_READ_ONLY,
+    ),
+    Tool(
         name="list_holidays",
         description="All German public holidays of a year with date, name and weekday.",
         inputSchema={"type": "object", "properties": {"year": _YEAR_PROP, "state": _STATE_PROP},
@@ -305,6 +360,7 @@ HANDLERS: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "date_info": date_info,
     "date_range": date_range,
     "add_days": add_days,
+    "calendar_week": calendar_week,
     "list_holidays": list_holidays,
     "dst_transitions": dst_transitions,
     "leap_seconds": leap_seconds,
