@@ -26,6 +26,18 @@ its head:
 | `dst_transitions` | the daylight saving time changes of a time zone in a year |
 | `leap_seconds` | all leap seconds, TAI minus UTC, and until when the list is valid |
 
+Date arithmetic (`time_mcp_http/period_tools.py`):
+
+| Tool | Returns |
+|---|---|
+| `period_bounds` | first and last day of today, yesterday, this/last/next week, month, quarter, half year or year, the last or next n days, or an explicit month, quarter, half year or year |
+| `date_diff` | days, weeks, years/months/days and working days between two dates; with times the elapsed time across DST changes |
+| `nth_weekday` | the n-th (or last) weekday of a month, or the n-th weekday after or before a date |
+| `convert_timestamp` | Unix seconds or milliseconds, Excel serials and ISO 8601 into each other, in UTC and local time |
+| `iso_duration` | an ISO 8601 duration into parts, German text and seconds, seconds into a duration, or a duration added to a date |
+| `bridge_days` | the bridge days (Brückentage) of a year with the free block each gives |
+| `meeting_times` | a meeting time in several time zones and the overlap of their working hours |
+
 Holidays come from the [`holidays`](https://pypi.org/project/holidays/)
 package. Without `state` only the holidays that apply in all of Germany count;
 a two-letter state code (`NW`, `BY`, …) adds that state's holidays. Leap
